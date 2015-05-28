@@ -1,0 +1,5 @@
+/server/target
+/server/.classpath
+/server/.project
+*.swp
+*~

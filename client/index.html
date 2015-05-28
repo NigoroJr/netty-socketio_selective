@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>netty-socketio Test page</title>
+    <link rel="stylesheet" href="https://necolas.github.io/normalize.css/3.0.2/normalize.css" type="text/css" charset="utf-8">
+    <link rel="stylesheet" href="style.css" type="text/css" charset="utf-8">
+  </head>
+
+  <body>
+    <ul class="buttons">
+      <li><button id="a">Team A</button></li>
+      <li><button id="b">Team B</button></li>
+      <li><button id="c">Team C</button></li>
+    </ul>
+
+    <form>
+      <input type="radio" name="dest" value="world" id="radio_world">World</input>
+      <input type="radio" name="dest" value="team" id="radio_team">Team</input>
+      <input type="text" id="text_message"></input>
+      <input type="button" value="Send!" onclick="sendMessage()"></input>
+    </form>
+
+    <table id="messages">
+      <tr>
+        <th>From</th>
+        <th>To</th>
+        <th>Message</th>
+      </tr>
+    </>
+
+    <section id="current_team"></section>
+
+    <script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+
+    <script>
+var socket = io.connect('http://localhost:3000');
+
+var current_team;
+var userName;
+var my_id = Math.floor(Math.random() * 100);
+var textNode = document.createTextNode('');
+
+socket.on('connect', function () {
+  userName = prompt('Connected to server. Enter username:');
+
+  /* Dummy node so that this text node can be removed first */
+  document.getElementById('current_team').appendChild(textNode);
+});
+
+socket.on('bcast_req_world', function (data) {
+  var element = $('<tr><td>' + data.userName
+      + '</td><td>' + 'WORLD'
+      + '</td><td>' + data.message + '</td></tr>');
+  $('#messages').append(element);
+});
+
+socket.on('bcast_req_team', function (data) {
+  var element = $('<tr><td>' + data.userName
+      + '</td><td>' + data.team
+      + '</td><td>' + data.message + '</td></tr>');
+  $('#messages').append(element);
+});
+
+function sendMessage() {
+  if (document.getElementById('radio_team').checked) {
+    sendMessageToTeam(current_team, document.getElementById('text_message').value);
+  }
+  else {
+    sendMessageToWorld(document.getElementById('text_message').value);
+  }
+}
+
+function sendMessageToWorld(mes) {
+  var jsonObject = {team: 'WORLD', userName: userName, id: my_id, message: mes};
+  socket.emit('bcast_req_world', jsonObject);
+  //alert('Sent to World from ID: ' + jsonObject.id + ' ' + mes);
+}
+
+function sendMessageToTeam(team_id, mes) {
+  var jsonObject = {team: team_id, userName: userName, id: my_id, message: mes};
+  socket.emit('bcast_req_team', jsonObject);
+  //alert('Sent to Team: ' + jsonObject.team + ' Your ID: ' + jsonObject.id + ' ' + mes);
+}
+
+function changeTeam() {
+  current_team = String(event.target.id);
+
+  document.getElementById('current_team').removeChild(textNode);
+  textNode = document.createTextNode(current_team);
+  document.getElementById('current_team').appendChild(textNode);
+
+  $('.buttons').hide();
+
+  // Report to the server the team selected
+  var jsonObject = {team: current_team, userName: userName, id: my_id};
+  socket.emit('team_select', jsonObject);
+}
+
+// Add listeners
+$('button').click(changeTeam);
+    </script>
+  </body>
+</html>
